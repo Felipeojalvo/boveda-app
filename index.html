@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Bóveda</title>
+  <meta name="description" content="Captura de notas por dictado hacia una bóveda de archivos Markdown en GitHub.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#f3eee3" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#16151a" media="(prefers-color-scheme: dark)">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Bóveda">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="barra">
+    <h1>Bóveda</h1>
+    <span id="red" class="red" aria-live="polite"></span>
+  </header>
+
+  <main>
+    <!-- CAPTURAR -->
+    <section id="v-capturar" class="vista">
+      <div id="aviso-cola" class="franja" hidden>
+        <span id="aviso-cola-txt"></span>
+        <button id="btn-reintentar" type="button" class="chico">Reintentar</button>
+      </div>
+      <label for="dictado" class="sr">Dictado</label>
+      <textarea id="dictado" rows="10" placeholder="Dictá con el micrófono del teclado o escribí. Sin título, sin carpetas: eso se resuelve después." autocomplete="off" autocapitalize="sentences" spellcheck="true"></textarea>
+      <div class="fila">
+        <span id="contador" class="suave">0 palabras</span>
+        <button id="btn-limpiar" type="button" class="chico secundario">Vaciar</button>
+      </div>
+      <p id="error-captura" class="error" role="alert" hidden></p>
+      <div class="fila">
+        <button id="btn-revisar" type="button" class="primario">Ordenar y revisar</button>
+        <button id="btn-sin-ia" type="button" class="secundario" hidden>Revisar sin ordenar</button>
+      </div>
+    </section>
+
+    <!-- REVISAR -->
+    <section id="v-revisar" class="vista" hidden>
+      <h2>Revisá antes de guardar</h2>
+      <ul id="avisos-globales" class="avisos"></ul>
+      <div id="tarjetas"></div>
+      <div class="fila">
+        <button id="btn-volver" type="button" class="secundario">Volver al dictado</button>
+        <button id="btn-guardar" type="button" class="primario">Guardar</button>
+      </div>
+    </section>
+
+    <!-- NOTAS -->
+    <section id="v-notas" class="vista" hidden>
+      <div class="fila">
+        <h2>Bóveda</h2>
+        <button id="btn-actualizar" type="button" class="chico">Actualizar</button>
+      </div>
+      <div id="pendientes-envio"></div>
+      <p id="estado-notas" class="suave"></p>
+      <ul id="lista-notas" class="lista"></ul>
+
+      <div id="lector" hidden>
+        <div class="fila">
+          <strong id="lector-nombre"></strong>
+          <button id="btn-cerrar-lector" type="button" class="chico secundario">Cerrar</button>
+        </div>
+        <pre id="lector-texto"></pre>
+      </div>
+
+      <details class="caja">
+        <summary>Aplicar relaciones de Claude</summary>
+        <p class="suave">Pegá el bloque JSON que te devuelve el proyecto de entrelazamiento. La app actualiza <code>relaciones</code> y <code>estado</code> en las notas indicadas, sin tocar nada más.</p>
+        <textarea id="json-relaciones" rows="7" placeholder='{"actualizaciones":[{"nota":"2026-10-30-ejemplo","estado":"trabajada","relaciones":[{"tipo":"continua","con":"2026-10-29-otra-nota"}]}]}' spellcheck="false"></textarea>
+        <button id="btn-aplicar" type="button" class="primario">Aplicar</button>
+        <pre id="resultado-aplicar" class="suave" hidden></pre>
+      </details>
+    </section>
+
+    <!-- AJUSTES -->
+    <section id="v-ajustes" class="vista" hidden>
+      <h2>Ajustes</h2>
+
+      <fieldset>
+        <legend>Bóveda en GitHub</legend>
+        <label>Usuario u organización
+          <input id="c-owner" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="felipe-ejemplo">
+        </label>
+        <label>Repositorio de notas (privado)
+          <input id="c-repo" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="boveda-notas">
+        </label>
+        <div class="dos">
+          <label>Rama
+            <input id="c-branch" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="main">
+          </label>
+          <label>Carpeta
+            <input id="c-carpeta" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="notas">
+          </label>
+        </div>
+        <label>Token de GitHub (solo ese repo, permiso Contents: lectura y escritura)
+          <input id="c-token" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="github_pat_…">
+        </label>
+        <button id="btn-probar-gh" type="button" class="secundario">Probar conexión</button>
+        <p id="res-gh" class="suave" aria-live="polite"></p>
+      </fieldset>
+
+      <fieldset>
+        <legend>Ordenar con IA (opcional)</legend>
+        <label class="check"><input id="c-usarIA" type="checkbox"> Ordenar el dictado con Gemini</label>
+        <p class="aviso-priv">En el plan gratuito de Gemini, Google puede usar lo que enviás para mejorar sus productos y revisores humanos pueden leerlo. Se envía el dictado completo. Si no querés eso, desactivá esta opción: la app funciona igual, sin ordenar.</p>
+        <label>Clave de API de Google AI Studio
+          <input id="c-geminiKey" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="AIza…">
+        </label>
+        <label>Modelo
+          <input id="c-modelo" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="gemini-2.5-flash">
+        </label>
+        <button id="btn-modelos" type="button" class="secundario">Ver modelos disponibles</button>
+        <div id="lista-modelos" class="chips"></div>
+        <p id="res-ia" class="suave" aria-live="polite"></p>
+      </fieldset>
+
+      <p class="suave">Estos datos quedan solo en este dispositivo. Si perdés el celular, revocá el token en GitHub.</p>
+    </section>
+  </main>
+
+  <nav class="tabs" aria-label="Secciones">
+    <button type="button" data-vista="capturar" class="activa">Capturar</button>
+    <button type="button" data-vista="notas">Notas <span id="badge" class="badge" hidden></span></button>
+    <button type="button" data-vista="ajustes">Ajustes</button>
+  </nav>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="core.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
