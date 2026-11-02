@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="es" data-tema="oscuro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Bóveda</title>
+  <meta name="description" content="Notas por dictado, temas y grafo, guardados como archivos Markdown en tu repositorio de GitHub.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta id="meta-color" name="theme-color" content="#020803">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Bóveda">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <script>
+    /* Aplica el contraste guardado antes de pintar, para que no parpadee. */
+    try {
+      var c = JSON.parse(localStorage.getItem('bov.cfg') || '{}');
+      if (c.tema === 'claro') {
+        document.documentElement.setAttribute('data-tema', 'claro');
+        document.getElementById('meta-color').setAttribute('content', '#f1f6ee');
+      }
+    } catch (e) { /* sin almacenamiento: queda el tema oscuro */ }
+  </script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="barra">
+    <h1><span class="prompt">&gt;_</span> BÓVEDA<span class="cursor" aria-hidden="true"></span></h1>
+    <div class="acciones">
+      <span id="red" class="red" aria-live="polite"></span>
+      <button id="btn-tema" type="button" class="icono" aria-label="Cambiar contraste">◐</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- CAPTURAR -->
+    <section id="v-capturar" class="vista">
+      <div id="aviso-cola" class="franja" hidden>
+        <span id="aviso-cola-txt"></span>
+        <button id="btn-reintentar" type="button" class="chico">Reintentar</button>
+      </div>
+      <label for="dictado" class="sr">Dictado</label>
+      <textarea id="dictado" rows="10" placeholder="Dictá con el micrófono del teclado o escribí. Sin título, sin carpetas, sin etiquetas: eso se resuelve después." autocomplete="off" autocapitalize="sentences" spellcheck="true"></textarea>
+      <div class="fila">
+        <span id="contador" class="suave">0 palabras</span>
+        <button id="btn-limpiar" type="button" class="chico secundario">Vaciar</button>
+      </div>
+      <p id="error-captura" class="error" role="alert" hidden></p>
+      <div class="fila">
+        <button id="btn-revisar" type="button" class="primario">Ordenar y revisar</button>
+        <button id="btn-sin-ia" type="button" class="secundario" hidden>Revisar sin ordenar</button>
+      </div>
+    </section>
+
+    <!-- REVISAR -->
+    <section id="v-revisar" class="vista" hidden>
+      <h2>Revisá antes de guardar</h2>
+      <ul id="avisos-globales" class="avisos"></ul>
+      <div id="tarjetas"></div>
+      <div class="fila">
+        <button id="btn-volver" type="button" class="secundario">Volver al dictado</button>
+        <button id="btn-guardar" type="button" class="primario">Guardar</button>
+      </div>
+    </section>
+
+    <!-- NOTAS -->
+    <section id="v-notas" class="vista" hidden>
+      <div class="fila">
+        <h2>Notas</h2>
+        <button id="btn-actualizar" type="button" class="chico">Actualizar</button>
+      </div>
+      <div id="pendientes-envio"></div>
+      <p id="estado-notas" class="suave"></p>
+      <div id="filtro-temas" class="chips"></div>
+      <div id="lector" hidden></div>
+      <ul id="lista-notas" class="lista"></ul>
+      <details class="caja" id="caja-temas">
+        <summary>Temas</summary>
+        <div id="gestor-temas"></div>
+      </details>
+    </section>
+
+    <!-- GRAFO -->
+    <section id="v-grafo" class="vista" hidden>
+      <div class="fila">
+        <h2>Grafo</h2>
+        <div class="botones">
+          <button id="g-menos" type="button" class="chico" aria-label="Alejar">−</button>
+          <button id="g-mas" type="button" class="chico" aria-label="Acercar">+</button>
+          <button id="g-ajustar" type="button" class="chico" aria-label="Ajustar a la pantalla">⌖</button>
+        </div>
+      </div>
+      <div class="opciones">
+        <label class="check"><input id="g-temas" type="checkbox" checked> temas</label>
+        <label class="check"><input id="g-rel" type="checkbox" checked> relaciones</label>
+        <label class="check"><input id="g-repetidos" type="checkbox"> solo temas con 2+ notas</label>
+      </div>
+      <div id="grafo-lienzo" class="lienzo"></div>
+      <p id="grafo-estado" class="suave"></p>
+      <div id="grafo-detalle"></div>
+      <div class="leyenda" aria-label="Leyenda">
+        <span><b>●</b> idea</span><span><b>■</b> lectura</span><span><b>▲</b> recuerdo</span>
+        <span>hueco = pendiente</span><span class="pill-demo">tema</span>
+        <span class="l-continua">── continúa</span><span class="l-tensiona">╌╌ tensiona</span><span class="l-rompe">··· rompe</span>
+      </div>
+    </section>
+
+    <!-- AJUSTES -->
+    <section id="v-ajustes" class="vista" hidden>
+      <h2>Ajustes</h2>
+
+      <fieldset>
+        <legend>Bóveda en GitHub</legend>
+        <label>Usuario u organización
+          <input id="c-owner" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="felipe-ejemplo">
+        </label>
+        <label>Repositorio de notas (privado)
+          <input id="c-repo" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="boveda-notas">
+        </label>
+        <div class="dos">
+          <label>Rama
+            <input id="c-branch" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="main">
+          </label>
+          <label>Carpeta
+            <input id="c-carpeta" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="notas">
+          </label>
+        </div>
+        <label>Token de GitHub (solo ese repo, permiso Contents: lectura y escritura)
+          <input id="c-token" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="github_pat_…">
+        </label>
+        <button id="btn-probar-gh" type="button" class="secundario">Probar conexión</button>
+        <p id="res-gh" class="suave" aria-live="polite"></p>
+      </fieldset>
+
+      <fieldset>
+        <legend>Ordenar con IA (opcional)</legend>
+        <label class="check"><input id="c-usarIA" type="checkbox"> Ordenar el dictado y sugerir temas con Gemini</label>
+        <p class="aviso-priv">En el plan gratuito de Gemini, Google puede usar lo que enviás para mejorar sus productos y revisores humanos pueden leerlo. Se envía el dictado completo y la lista de tus temas (no tus otras notas). Si no querés eso, desactivá esta opción: la app funciona igual, sin ordenar.</p>
+        <label>Clave de API de Google AI Studio
+          <input id="c-geminiKey" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="AIza…">
+        </label>
+        <label>Modelo
+          <input id="c-modelo" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="gemini-2.5-flash">
+        </label>
+        <button id="btn-modelos" type="button" class="secundario">Ver modelos disponibles</button>
+        <div id="lista-modelos" class="chips"></div>
+        <p id="res-ia" class="suave" aria-live="polite"></p>
+      </fieldset>
+
+      <p class="suave">Estos datos quedan solo en este dispositivo. Si perdés el celular, revocá el token en GitHub.</p>
+    </section>
+  </main>
+
+  <nav class="tabs" aria-label="Secciones">
+    <button type="button" data-vista="capturar" class="activa"><i>+</i><span>Capturar</span></button>
+    <button type="button" data-vista="notas"><i>≡</i><span>Notas <b id="badge" class="badge" hidden></b></span></button>
+    <button type="button" data-vista="grafo"><i>◉</i><span>Grafo</span></button>
+    <button type="button" data-vista="ajustes"><i>∴</i><span>Ajustes</span></button>
+  </nav>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="core.js"></script>
+  <script src="grafo.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
