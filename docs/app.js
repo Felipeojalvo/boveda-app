@@ -1,6 +1,7 @@
-/* Bóveda v2 — interfaz, GitHub, Gemini, temas, editor y grafo. La lógica pura vive en core.js. */
+/* Bóveda v3 — interfaz, GitHub, Gemini, temas, editor y grafo. La lógica pura vive en core.js. */
 (() => {
   'use strict';
+  const VERSION = 'v3 · 2026-11-03';
   const C = window.Core;
   const $ = (id) => document.getElementById(id);
 
@@ -83,24 +84,30 @@
     if (raiz) return base;
     return base + '/contents' + (path ? '/' + path.split('/').map(encodeURIComponent).join('/') : '');
   }
+  const GH_TIMEOUT = 25000; // ms: una conexión colgada tiene que fallar, no esperar para siempre
   async function gh(method, path, { body, query, raiz } = {}) {
     const url = ghUrl(path, raiz) + (query ? '?' + new URLSearchParams(query) : '');
-    const res = await fetch(url, {
-      method,
-      headers: {
-        Authorization: `Bearer ${cfg.token}`,
-        Accept: 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-        'Content-Type': 'application/json',
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    if (!res.ok) {
-      let m = '';
-      try { m = (await res.json()).message || ''; } catch (_) { /* sin cuerpo */ }
-      throw new ErrorHTTP(res.status, m || res.statusText);
-    }
-    return res.json();
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), GH_TIMEOUT);
+    try {
+      const res = await fetch(url, {
+        method,
+        signal: ctrl.signal,
+        headers: {
+          Authorization: `Bearer ${cfg.token}`,
+          Accept: 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+          'Content-Type': 'application/json',
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      if (!res.ok) {
+        let m = '';
+        try { m = (await res.json()).message || ''; } catch (_) { /* sin cuerpo */ }
+        throw new ErrorHTTP(res.status, m || res.statusText);
+      }
+      return await res.json();
+    } finally { clearTimeout(to); }
   }
   function mensajeGH(e) {
     if (e instanceof ErrorHTTP) {
@@ -110,6 +117,7 @@
       if (e.status === 409) return 'Conflicto al escribir; reintentá.';
       return `GitHub respondió ${e.status}: ${e.message}`;
     }
+    if (e && e.name === 'AbortError') return 'La conexión con GitHub está muy lenta o colgada.';
     if (e && e.name === 'TypeError') return 'Sin conexión.';
     return (e && e.message) || String(e);
   }
@@ -701,6 +709,10 @@
   function cargarAjustes() {
     for (const [id, k] of Object.entries(CAMPOS)) $(id).value = cfg[k] || '';
     $('c-usarIA').checked = Boolean(cfg.usarIA);
+    // Si el núcleo (core.js) no coincide con la app, hay archivos de versiones mezcladas.
+    const nucleo = C.VERSION || '?';
+    $('version').textContent = `Versión de la app: ${VERSION}. Núcleo: ${nucleo}.` +
+      (C.VERSION === VERSION ? '' : ' ⚠ Los archivos no coinciden: cerrá la app del todo y abrila de nuevo con conexión.');
   }
   function enlazarAjustes() {
     for (const [id, k] of Object.entries(CAMPOS)) {

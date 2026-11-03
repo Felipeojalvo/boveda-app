@@ -455,7 +455,10 @@ FORMATO DE SALIDA: solo JSON válido, sin texto adicional ni bloques de código:
     };
   }
 
+  const VERSION = 'v3 · 2026-11-03';
+
   return {
+    VERSION,
     TIPOS, TIPOS_RELACION, ESTADOS,
     fechaISO, mesAnio, slugify, nombreArchivo, tituloProvisorio,
     limpiarLinea, limpiarTexto, contarPalabras,
