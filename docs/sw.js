@@ -1,7 +1,7 @@
 /* Service worker: la app abre sin conexión. Red primero; si falla, caché. */
-const CACHE = 'boveda-v1';
+const CACHE = 'boveda-v2';
 const SHELL = [
-  './', 'index.html', 'style.css', 'core.js', 'app.js', 'manifest.webmanifest',
+  './', 'index.html', 'style.css', 'core.js', 'grafo.js', 'app.js', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
 ];
 
